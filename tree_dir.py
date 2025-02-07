@@ -1,55 +1,72 @@
 import os
+from os.path import join, isdir
+import sys
 
-def dir(p,s):
-    b=[]
-    for i in s:
-        d=f'{p}/{i}'
-        if os.path.isdir(d):
-            if i[0]!='.':
-                b.append(i)
-    return b
+STICK='┃'
+DIR_TO='┣'
+DIR_END='┗'
+FILE_TO='┠'
+FILE_END='┖'
 
-def ser(p,s,h='',l=[],z=0):
-    if z==0:
-        print(h)
-    s=dir(p,s)
-    for i in s:
-        if s.index(i)>0:
-            del l[len(l)-1]
+def srt(els:list[str], path:str)->list[str]:
+    dirs = sorted(filter(lambda d: isdir(join(path, d)), els))
+    files = sorted(filter(lambda d: not isdir(join(path, d)), els))
+    if WITH_FILES:
+        return dirs+files
+    return dirs
+
+def set_stick(sticks:str):
+    if not sticks:
+        return ""
+    st = sticks[-1]
+    new_st= " " if st == DIR_END or st == FILE_END else STICK
+    return sticks[:-1] + new_st
+
+def tree(path: str, sticks:str=""):
+    cur_dir=os.path.split(path)[1]
+    print(sticks+cur_dir)
+    sticks = set_stick(sticks)
+    
+    try:
+        els=srt(os.listdir(path), path)
+    except PermissionError:
+        return
         
-        d=f'{p}/{i}'
-        if os.path.isdir(d):
-            if i!='Android':
-                f=os.listdir(d)
-                for x in l:
-                    print(x,end='')
-                l=l[:z]
-                if s.index(i)==len(s)-1:
-                    print('┗'+i);
-                    l.append(' ')
-                else:
-                    print('┣'+i);
-                    l.append('┃')
-                ser(d,f,h,l,z+1)
-#        elif os.path.isfile(d):
-#            if True:
-#                #f=os.listdir(d)
-#                if s.index(link)==len(s)-1:
-#                    for z in l:
-#                        print(z,end='')
-#                    print('┖'+link)
-#                else:
-#                    for z in l:
-#                        print(z,end='')
-#                    print('┠'+link);
-            
-g=os.getcwd()
+    for n, el in enumerate(els):
+        if el.startswith(".") and not ALL:
+            continue 
+        p=os.path.join(path, el)
+        if os.path.isdir(p):
+            stk= DIR_TO if n+1 != len(els) else DIR_END
+            tree(p, sticks+stk)
+        else:
+            stk= FILE_TO if n+1 != len(els) else FILE_END
+            print(sticks+stk+el)
+    
+WITH_FILES =True
+ALL = False
 
-ss=os.listdir(g)
+if not sys.argv[1:]:
+    cur_path=os.getcwd()
+else:
+    sp=sys.argv
+    
+    if "-d" in sp:
+        WITH_FILES = False
+        sp.remove("-d")
+    if "-a" in sp:
+        ALL = True
+        sp.remove("-a")
+        
+    if sp:
+        cur_path=sp[1]
+        if not os.path.exists(cur_path):
+            print("error path:", cur_path)
+            exit()
+        if not os.path.split(cur_path)[1]:
+            cur_path=cur_path[:-1]
+    else:
+        cur_path=os.getcwd()
+#cur_path = ""
 
-s=g[g.rfind('/')+1:]
-try:
-    ss.remove('Android')
-except:
-    pass
-ser(g,ss,s)
+tree(cur_path)
